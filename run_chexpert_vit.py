@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 
 from config import Config
-from chexpert_loader_fast import create_chexpert_dataloaders_fast
+from chexpert_loader import create_chexpert_dataloaders_fast
 from models import create_model
 from train import Trainer, AdvancedEvaluator
 from visualize import Visualizer

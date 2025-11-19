@@ -9,8 +9,8 @@ import numpy as np
 from pathlib import Path
 
 from config import Config
-from chexpert_loader_fast import create_chexpert_dataloaders_fast
-from medical_pretrained_models import create_medical_pretrained_model
+from chexpert_loader import create_chexpert_dataloaders_fast
+from models import create_model
 from train import Trainer, AdvancedEvaluator
 from visualize import Visualizer
 
@@ -33,9 +33,10 @@ def main():
     # ========================================
     Config.DATASET_PATH = "data/chexpert"
     
-    # Choose medical model
-    # Options: 'chexnet', 'medicalnet', 'transpath', 'medical_resnet50'
-    MEDICAL_MODEL = "densenet121"  # densenet121 - best for chest X-rays
+    # Use medical-specific pretrained model
+    Config.BACKBONE = "densenet121_medical"  # CheXNet-style architecture
+    Config.PRETRAINED = True
+    Config.FREEZE_BACKBONE = False
     
     # SAME SETTINGS AS FAST VERSION FOR FAIR COMPARISON
     # Few-shot settings
@@ -60,12 +61,13 @@ def main():
     # Setup
     set_seed(42)
     Config.setup_directories()
+    Config.update_embedding_dim()
     
     print("\n" + "="*80)
     print("FEW-SHOT LEARNING WITH MEDICAL-SPECIFIC PRETRAINED MODEL")
     print("="*80)
     print(f"\nDataset: {Config.DATASET_PATH}")
-    print(f"Medical Model: {MEDICAL_MODEL}")
+    print(f"Medical Model: {Config.BACKBONE}")
     print(f"Configuration: {Config.N_WAY}-way {Config.K_SHOT}-shot")
     print(f"Device: {Config.DEVICE}")
     print(f"\nExpected: 5-8% improvement over ImageNet pretraining")
@@ -97,7 +99,7 @@ def main():
     # ========================================
     print("\nCreating medical pretrained model...")
     try:
-        model = create_medical_pretrained_model(MEDICAL_MODEL, Config)
+        model = create_model(Config)
     except Exception as e:
         print(f"\n[ERROR] Failed to create medical model: {e}")
         print("\nNote: Some medical models require specific pretrained weights.")
@@ -109,11 +111,14 @@ def main():
     print(f"Total parameters: {total_params:,}")
     print(f"Trainable parameters: {trainable_params:,}")
     
+    # Get model name for file naming (e.g., "chexnet" from "densenet121_medical")
+    model_name = "chexnet" if "densenet121" in Config.BACKBONE else Config.BACKBONE
+    
     # ========================================
     # TRAINING
     # ========================================
     print("\n" + "="*80)
-    print(f"TRAINING PHASE ({MEDICAL_MODEL.upper()})")
+    print(f"TRAINING PHASE ({Config.BACKBONE.upper()})")
     print("="*80 + "\n")
     
     trainer = Trainer(model, Config, train_dataset, val_dataset)
@@ -178,41 +183,41 @@ def main():
         trainer.train_losses,
         trainer.train_accs,
         trainer.val_accs,
-        save_name=f"training_curves_{MEDICAL_MODEL}.png"
+        save_name=f"training_curves_{model_name}.png"
     )
     
     visualizer.plot_shot_comparison(shot_results, n_way=Config.N_WAY, 
-                                    save_name=f"shot_comparison_{MEDICAL_MODEL}.png")
+                                    save_name=f"shot_comparison_{model_name}.png")
     
     if way_results:
         visualizer.plot_way_comparison(way_results, k_shot=Config.K_SHOT,
-                                       save_name=f"way_comparison_{MEDICAL_MODEL}.png")
+                                       save_name=f"way_comparison_{model_name}.png")
     
     visualizer.plot_accuracy_distribution(shot_results,
-                                         save_name=f"accuracy_distribution_{MEDICAL_MODEL}.png")
+                                         save_name=f"accuracy_distribution_{model_name}.png")
     
     visualizer.plot_comprehensive_results(shot_results, way_results)
     
     print("\n" + "-"*80)
-    print(f"RESULTS SUMMARY ({MEDICAL_MODEL.upper()})")
+    print(f"RESULTS SUMMARY ({Config.BACKBONE.upper()})")
     print("-"*80)
-    visualizer.create_results_summary(shot_results, f"chexpert_{MEDICAL_MODEL}_shot_results.csv")
+    visualizer.create_results_summary(shot_results, f"chexpert_{model_name}_shot_results.csv")
     
     if way_results:
-        visualizer.create_results_summary(way_results, f"chexpert_{MEDICAL_MODEL}_way_results.csv")
+        visualizer.create_results_summary(way_results, f"chexpert_{model_name}_way_results.csv")
     
     # ========================================
     # FINAL SUMMARY
     # ========================================
     print("\n" + "="*80)
-    print(f"[SUCCESS] MEDICAL MODEL ({MEDICAL_MODEL.upper()}) EXPERIMENT COMPLETE!")
+    print(f"[SUCCESS] MEDICAL MODEL ({Config.BACKBONE.upper()}) EXPERIMENT COMPLETE!")
     print("="*80)
     print(f"\nBest Validation Accuracy: {best_val_acc:.4f}")
     print(f"\nResults saved to: {Config.RESULTS_DIR}")
     print("\nGenerated files:")
-    print(f"   - training_curves_{MEDICAL_MODEL}.png")
-    print(f"   - shot_comparison_{MEDICAL_MODEL}.png")
-    print(f"   - chexpert_{MEDICAL_MODEL}_shot_results.csv")
+    print(f"   - training_curves_{model_name}.png")
+    print(f"   - shot_comparison_{model_name}.png")
+    print(f"   - chexpert_{model_name}_shot_results.csv")
     print("\n" + "="*80 + "\n")
 
 

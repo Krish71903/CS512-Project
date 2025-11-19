@@ -111,7 +111,7 @@ def main():
     print("Loading CheXpert dataset (smaller subset for speed)...\n")
     
     # Import the custom fast loader
-    from chexpert_loader_fast import create_chexpert_dataloaders_fast
+    from chexpert_loader import create_chexpert_dataloaders_fast
     
     try:
         train_dataset, val_dataset, test_dataset = create_chexpert_dataloaders_fast(

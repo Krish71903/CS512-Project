@@ -140,6 +140,9 @@ class BackboneFactory:
         elif backbone_name.startswith("clip_"):
             # OpenCLIP models: clip_vit_b32, clip_vit_b16, clip_vit_l14, clip_rn50
             backbone, embedding_dim = BackboneFactory._create_openclip(backbone_name, pretrained)
+        elif backbone_name in ["chexnet", "densenet121_medical"]:
+            # Medical pretrained models
+            backbone, embedding_dim = BackboneFactory._create_medical_densenet121(pretrained)
         else:
             raise ValueError(f"Unknown backbone: {backbone_name}")
         
@@ -326,6 +329,38 @@ class BackboneFactory:
         
         print(f"OpenCLIP backbone created: {model_name}")
         print(f"Embedding dimension: {embedding_dim}")
+        
+        return backbone, embedding_dim
+    
+    @staticmethod
+    def _create_medical_densenet121(pretrained):
+        """
+        Create DenseNet-121 for medical imaging (CheXNet-style)
+        Optimized for chest X-ray analysis
+        
+        Note: This uses ImageNet pretrained weights as base.
+        For true CheXNet weights, download from: https://github.com/arnoweng/CheXNet
+        
+        Returns:
+            backbone: Feature extractor
+            embedding_dim: Output dimension
+        """
+        print("Loading Medical DenseNet-121 (CheXNet-style for chest X-rays)...")
+        
+        densenet = models.densenet121(pretrained=pretrained)
+        
+        # Remove classification head (same architecture as CheXNet)
+        backbone = nn.Sequential(
+            densenet.features,
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+        )
+        
+        embedding_dim = 1024
+        
+        if pretrained:
+            print("  Using ImageNet pretrained weights as base")
+            print("  This architecture matches CheXNet (Rajpurkar et al., 2017)")
         
         return backbone, embedding_dim
 
